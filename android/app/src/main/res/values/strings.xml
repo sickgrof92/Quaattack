@@ -1,0 +1,7 @@
+<?xml version='1.0' encoding='utf-8'?>
+<resources>
+    <string name="app_name">Quaattack!</string>
+    <string name="title_activity_main">Quaattack!</string>
+    <string name="package_name">com.quaattack.game</string>
+    <string name="custom_url_scheme">com.quaattack.game</string>
+</resources>
