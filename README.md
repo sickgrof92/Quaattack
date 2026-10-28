@@ -98,12 +98,12 @@ Apple's cloud signing and uploads it to App Store Connect. No Mac needed.
 2. Actions tab → **iOS TestFlight upload** → **Run workflow**, with a version like `1.0`.
 3. The build appears in App Store Connect → TestFlight after Apple finishes processing it (about 10–30 minutes).
 
-The app is iPhone-only and portrait-only, so the App Store needs only 6.9" iPhone screenshots.
+The app runs on iPhone and iPad, portrait only. On iPad the whole game is scaled up from a phone-sized layout, so it plays the same.
 
 ## Store assets and website
 
 - `store/google-play/`: the 512 px icon, the 1024×500 feature graphic and five 1080×2160 phone screenshots.
-- `store/app-store/`: the 1024 px icon and five 1320×2868 (6.9") iPhone screenshots.
+- `store/app-store/`: the 1024 px icon, iPhone screenshots in 6.9", 6.7", 6.5" and 6.3" sizes, and 13" iPad screenshots (2064×2752).
 - `docs/`: the privacy policy (`privacy.html`) and a small home page. Turn on GitHub Pages
   (Settings → Pages → Deploy from a branch → `main`, folder `/docs`) and the policy is at
   https://sickgrof92.github.io/Quaattack/privacy.html.

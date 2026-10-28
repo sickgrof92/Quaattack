@@ -27,7 +27,7 @@ body {
   -webkit-user-select: none; user-select: none;
   -webkit-tap-highlight-color: transparent;
 }
-#app { position: relative; height: 100%; overflow: hidden; }
+#app { position: relative; height: 100%; overflow: hidden; transform-origin: 0 0; }
 #game { position: absolute; inset: 0; width: 100%; height: 100%; display: block; touch-action: none; }
 
 .bar {
@@ -571,16 +571,20 @@ const SFX = {
 };
 
 /* ---------- sizing & field ---------- */
-let W = 0, H = 0, DPR = 1, U = 1, FT = 0, FB = 0, PX = 0, PY = 0, bg = null;
+let W = 0, H = 0, DPR = 1, U = 1, FT = 0, FB = 0, PX = 0, PY = 0, bg = null, ZOOM = 1;
 function resize() {
-  DPR = Math.min(2, window.devicePixelRatio || 1);
-  const r = cvs.getBoundingClientRect();
-  W = r.width; H = r.height;
+  // tablets: lay the game out at a phone-like size and scale the whole thing up, so it plays the same
+  const app = $("app");
+  ZOOM = Math.max(1, Math.min(innerWidth / 430, innerHeight / 932));
+  app.style.width = ZOOM > 1 ? innerWidth / ZOOM + "px" : "";
+  app.style.height = ZOOM > 1 ? innerHeight / ZOOM + "px" : "";
+  app.style.transform = ZOOM > 1 ? `scale(${ZOOM})` : "";
+  DPR = Math.min(2, window.devicePixelRatio || 1) * ZOOM;
+  W = cvs.clientWidth; H = cvs.clientHeight;
   cvs.width = Math.round(W * DPR); cvs.height = Math.round(H * DPR);
   U = clamp(Math.min(W, H * 0.8) / 420, 0.78, 1.45);
-  const appTop = $("app").getBoundingClientRect().top;
-  FT = $("top").getBoundingClientRect().bottom - appTop;
-  FB = $("bottom").getBoundingClientRect().top - appTop;
+  FT = $("top").offsetTop + $("top").offsetHeight;
+  FB = $("bottom").offsetTop;
   PX = W / 2; PY = (FT + FB) / 2;
   buildBg();
 }
@@ -1979,7 +1983,7 @@ cvs.addEventListener("pointerdown", e => {
   e.preventDefault();
   if (!G || !G.running || paused) return;
   wakeAudio();
-  const r = cvs.getBoundingClientRect(), x = e.clientX - r.left, y = e.clientY - r.top;
+  const r = cvs.getBoundingClientRect(), x = (e.clientX - r.left) / ZOOM, y = (e.clientY - r.top) / ZOOM;
   if (G.mode === "bread") return throwBread(x, y);
   if (G.mode === "moat") return placeMoat(x, y);
   bonkAt(x, y);
