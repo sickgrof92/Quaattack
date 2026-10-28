@@ -75,3 +75,22 @@ and the shop's Restore purchases button (which Apple requires) brings them to a 
 
 `tools/` holds the simulated 8-year-old player used to calibrate the 100 levels
 (`TUNE` and `DIFFICULTY` in `src/game.html`).
+
+## Google Play release build
+
+`.github/workflows/android-release.yml` builds the signed `.aab` that Play Console asks for.
+
+1. Add four repository secrets (Settings → Secrets and variables → Actions):
+   `ANDROID_KEYSTORE_BASE64`, `ANDROID_KEYSTORE_PASSWORD`, `ANDROID_KEY_ALIAS`, `ANDROID_KEY_PASSWORD`.
+   The upload key and its passwords are kept outside the repo. Never commit them.
+2. Open the Actions tab → **Android release bundle** → **Run workflow**, and enter a version like `1.0`.
+3. When the run finishes, download the bundle from the run's **Artifacts** and upload it in Play Console.
+
+Every run gets a higher version code automatically (the run number), so each upload is accepted.
+
+## Store assets and website
+
+- `store/google-play/`: the 512 px icon, the 1024×500 feature graphic and five 1080×2160 phone screenshots.
+- `docs/`: the privacy policy (`privacy.html`) and a small home page. Turn on GitHub Pages
+  (Settings → Pages → Deploy from a branch → `main`, folder `/docs`) and the policy is at
+  https://sickgrof92.github.io/Quaattack/privacy.html.
