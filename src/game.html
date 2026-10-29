@@ -39,7 +39,7 @@ body {
 }
 .bar > * { pointer-events: auto; }
 #top { top: 0; padding-block: 10px 6px; justify-content: space-between; }
-#bottom { bottom: 0; padding-block: 6px 12px; justify-content: center; }
+#bottom { bottom: 0; padding-block: 6px 22px; justify-content: center; }
 
 .chip {
   background: var(--paper); border: 3px solid var(--ink); border-radius: 14px;
@@ -89,7 +89,7 @@ body {
 
 #hint {
   position: absolute; left: 50%; transform: translateX(-50%); z-index: 3;
-  bottom: calc(118px + env(safe-area-inset-bottom, 0px));
+  bottom: calc(128px + env(safe-area-inset-bottom, 0px));
   background: var(--ink); color: var(--paper); border-radius: 999px;
   padding: 6px 16px; font-weight: 800; font-size: 15px; white-space: nowrap; pointer-events: none;
 }
@@ -1983,7 +1983,8 @@ cvs.addEventListener("pointerdown", e => {
   e.preventDefault();
   if (!G || !G.running || paused) return;
   wakeAudio();
-  const r = cvs.getBoundingClientRect(), x = (e.clientX - r.left) / ZOOM, y = (e.clientY - r.top) / ZOOM;
+  // map through the canvas's on-screen box so taps line up even if the page was resized under us
+  const r = cvs.getBoundingClientRect(), x = (e.clientX - r.left) * W / r.width, y = (e.clientY - r.top) * H / r.height;
   if (G.mode === "bread") return throwBread(x, y);
   if (G.mode === "moat") return placeMoat(x, y);
   bonkAt(x, y);
@@ -2101,6 +2102,8 @@ function frame(now) {
   requestAnimationFrame(frame);
 }
 window.addEventListener("resize", resize);
+// some iPhones settle the web view's size after load without a resize event
+if (window.ResizeObserver) new ResizeObserver(() => { if (cvs.clientWidth !== W || cvs.clientHeight !== H) resize(); }).observe(cvs);
 resize();
 requestAnimationFrame(frame);
 })();
