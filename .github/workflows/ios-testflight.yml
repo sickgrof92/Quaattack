@@ -38,6 +38,8 @@ jobs:
           if [ -z "$ASC_KEY_P8" ]; then echo "::error::Add the App Store Connect secrets first (see README)"; exit 1; fi
           printf '%s' "$ASC_KEY_P8" > "$RUNNER_TEMP/asc_key.p8"
 
+      # The archive is built unsigned; the export step below signs it for the App Store
+      # with Apple's cloud signing, which needs no registered test devices.
       - name: Archive
         working-directory: ios/App
         run: |
@@ -50,8 +52,7 @@ jobs:
             -authenticationKeyID "${{ secrets.ASC_KEY_ID }}" \
             -authenticationKeyIssuerID "${{ secrets.ASC_ISSUER_ID }}" \
             DEVELOPMENT_TEAM="${{ secrets.APPLE_TEAM_ID }}" \
-            CODE_SIGN_STYLE=Automatic \
-            CODE_SIGN_IDENTITY="Apple Distribution" \
+            CODE_SIGNING_ALLOWED=NO \
             MARKETING_VERSION="${{ inputs.version_name }}" \
             CURRENT_PROJECT_VERSION="${{ github.run_number }}"
 
