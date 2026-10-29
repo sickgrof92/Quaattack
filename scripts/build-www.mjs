@@ -9,6 +9,7 @@ const page = `<!doctype html>
 <style>
 :root { color-scheme: light; padding-top: env(safe-area-inset-top, 0px); padding-bottom: env(safe-area-inset-bottom, 0px); }
 html, body { margin: 0; height: 100%; }
+html { box-sizing: border-box; }
 img { max-width: 100%; }
 [hidden] { display: none !important; }
 body { font: 14px system-ui, sans-serif; }
