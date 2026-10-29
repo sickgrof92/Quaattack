@@ -3,6 +3,11 @@
   "appName": "Quaattack!",
   "webDir": "www",
   "backgroundColor": "#5e9c37",
-  "ios": { "contentInset": "never" },
-  "android": { "backgroundColor": "#5e9c37" }
+  "ios": {
+    "contentInset": "never",
+    "scrollEnabled": false
+  },
+  "android": {
+    "backgroundColor": "#5e9c37"
+  }
 }
