@@ -1800,7 +1800,7 @@ const tierProduct = (kind, id, t) => `${lookProduct(kind, id)}_t${t}`;
 const PAID_LOOKS = Object.keys(LOOKS).flatMap(kind => LOOKS[kind].filter(l => !isFreeLook(kind, l.id)).map(l => [kind, l.id]));
 const LOOK_PRODUCTS = PAID_LOOKS.flatMap(([kind, id]) => TIERS.map(x => tierProduct(kind, id, x.t)));
 const lookForProduct = pid => PAID_LOOKS.map(([kind, id]) => lookProduct(kind, id)).find(base => pid.startsWith(base + "_t"));
-const RC_KEYS = { ios: "appl_REPLACE_WITH_REVENUECAT_IOS_KEY", android: "goog_REPLACE_WITH_REVENUECAT_ANDROID_KEY" };
+const RC_KEYS = { ios: "appl_qnYCbWtkqADrytFpdsRXLQPBWWx", android: "goog_REPLACE_WITH_REVENUECAT_ANDROID_KEY" };
 const NATIVE = window.Capacitor?.isNativePlatform?.() ? window.Capacitor : null;
 const Purchases = NATIVE?.Plugins?.Purchases;
 const storeProducts = {}; // product identifier -> store product with its local price
