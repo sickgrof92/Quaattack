@@ -20,7 +20,7 @@
 [hidden] { display: none !important; }
 html, body { margin: 0; padding: 0; width: 100%; height: 100%; overflow: hidden; position: fixed; inset: 0; }
 body {
-  background: var(--grass-deep); color: var(--ink); font-family: var(--body);
+  background: transparent; color: var(--ink); font-family: var(--body); /* #app paints the lawn; outside it stays see-through */
   -webkit-user-select: none; user-select: none; -webkit-tap-highlight-color: transparent;
   -webkit-touch-callout: none; touch-action: none; overscroll-behavior: none;
 }
@@ -241,7 +241,10 @@ const BUILD = "@BUILD_ID@";
 function stamp() {
   const el = $("stamp"); if (!el || el.classList.contains("gone")) return;
   const [fw, fh] = frameSize(), m = mraidSize();
-  el.textContent = `build ${BUILD} · frame ${fw}×${fh} · window ${innerWidth}×${innerHeight}` + (m ? ` · mraid ${m[0]}×${m[1]}` : " · no mraid");
+  let host = "top page";
+  try { host = window.frameElement ? (hostSize() ? "host " + hostSize().join("×") : "host ?") : window.parent !== window ? "cross-origin" : "top page"; } catch (e) { host = "cross-origin"; }
+  const [vw, vh] = viewSize();
+  el.textContent = `build ${BUILD} · frame ${fw}×${fh} · ` + (m ? `mraid ${m[0]}×${m[1]}` : "no mraid") + ` · ${host} · using ${vw}×${vh}`;
 }
 setTimeout(() => { const el = $("stamp"); if (el) el.classList.add("gone"); }, 8000);
 // If the ad container reports a max size through MRAID that's smaller than the frame (a preview's
@@ -255,9 +258,25 @@ function mraidSize() {
   return null;
 }
 function frameSize() { const b = document.body; return [b.clientWidth, b.clientHeight]; }
+// AppLovin's web preview, opened on a phone or tablet, makes the ad's iframe as big as the whole browser
+// window and sets it inside a smaller drawn phone, so it spills out. When the page hosting our iframe can
+// be read (same origin, as in that preview), fit inside the box the iframe sits in. Real ad SDKs run the ad
+// as its own page or in a cross-origin frame, where frameElement is null and this does nothing.
+function hostSize() {
+  try {
+    const f = window.frameElement, p = f && f.parentElement;
+    if (!p) return null;
+    const cs = getComputedStyle(p), num = v => parseFloat(v) || 0;
+    const w = p.clientWidth - num(cs.paddingLeft) - num(cs.paddingRight);
+    const h = p.clientHeight - num(cs.paddingTop) - num(cs.paddingBottom);
+    if (w > 100 && h > 100) return [Math.floor(w), Math.floor(h)];
+  } catch (e) {}
+  return null;
+}
 function viewSize() {
-  const [fw, fh] = frameSize(), m = mraidSize();
-  return m ? [Math.min(fw, m[0]) || m[0], Math.min(fh, m[1]) || m[1]] : [fw, fh];
+  let [w, h] = frameSize();
+  for (const s of [mraidSize(), hostSize()]) if (s) { w = Math.min(w || s[0], s[0]); h = Math.min(h || s[1], s[1]); }
+  return [w, h];
 }
 function resize() {
   const app = $("app"), [vw, vh] = viewSize();
