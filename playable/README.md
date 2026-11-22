@@ -32,11 +32,12 @@ Google Ads wants a zip with the HTML, so zip `quaattack-playable.html` on its ow
 
 ## Store links
 
-The Android link points at the real package, `com.quaattack.game`.
-The App Store ID isn't in the repo yet, so the iPhone link is a placeholder (`id0000000000`). Rebuild with the real one before launching:
+The links point at the real listings: the App Store (`id6828147105`) and Google Play (`com.quaattack.game`).
+The store link is chosen by device, so iPhones and iPads go to the App Store and everything else goes to Google Play.
+To change a link, for example to add campaign tracking parameters, rebuild with `IOS_URL` or `ANDROID_URL`:
 
 ```
-IOS_URL=https://apps.apple.com/app/id1234567890 npm run playable
+IOS_URL="https://apps.apple.com/app/id6828147105?pt=…&ct=…" npm run playable
 ```
 
 `ANDROID_URL` works the same way, for example to add campaign tracking parameters.

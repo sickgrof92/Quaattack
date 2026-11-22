@@ -58,8 +58,7 @@ const FONTS = `@font-face { font-family: "Bagel Fat One"; font-weight: 400; font
 @font-face { font-family: "Baloo 2"; font-weight: 400 800; font-display: block; src: url(data:font/woff2;base64,${b64("playable/fonts/baloo2-latin.woff2")}) format("woff2"); }`;
 
 const STORE = {
-  // App Store ID isn't known yet: replace with the real listing (or pass IOS_URL) before launch.
-  ios: process.env.IOS_URL || "https://apps.apple.com/app/id0000000000",
+  ios: process.env.IOS_URL || "https://apps.apple.com/app/id6828147105",
   android: process.env.ANDROID_URL || "https://play.google.com/store/apps/details?id=com.quaattack.game"
 };
 
