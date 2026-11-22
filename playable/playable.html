@@ -1,0 +1,628 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
+<meta name="ad.orientation" content="portrait,landscape">
+<title>Quaattack! Playable</title>
+<!-- Source template for the playable ad. Build with `npm run playable`; the shipped file is playable/dist/quaattack-playable.html. -->
+<style>
+/*@FONTS@*/
+:root {
+  --grass: #7fbf4d; --grass-deep: #5e9c37; --ink: #2a2a1c; --paper: #fffdf4;
+  --bill: #ff9a1f; --pond: #3aa6dc; --egg: #ffd23f; --berry: #e8434f;
+  --display: "Bagel Fat One", "Arial Rounded MT Bold", "Trebuchet MS", system-ui, sans-serif;
+  --body: "Baloo 2", "Trebuchet MS", system-ui, sans-serif;
+  --col: 112px;
+  color-scheme: light;
+}
+* { box-sizing: border-box; }
+[hidden] { display: none !important; }
+html, body { margin: 0; padding: 0; width: 100%; height: 100%; overflow: hidden; position: fixed; inset: 0; }
+body {
+  background: var(--grass-deep); color: var(--ink); font-family: var(--body);
+  -webkit-user-select: none; user-select: none; -webkit-tap-highlight-color: transparent;
+  -webkit-touch-callout: none; touch-action: none; overscroll-behavior: none;
+}
+#app { position: fixed; inset: 0; overflow: hidden; contain: strict; background: var(--grass-deep); }
+#game { position: absolute; left: 0; top: 0; width: 100%; height: 100%; display: block; touch-action: none; }
+.land #game { width: calc(100% - var(--col)); }
+
+.bar { position: absolute; left: 0; right: 0; z-index: 2; display: flex; align-items: center; gap: 8px; pointer-events: none;
+  padding-left: max(12px, env(safe-area-inset-left, 0px)); padding-right: max(12px, env(safe-area-inset-right, 0px)); }
+.bar > * { pointer-events: auto; }
+#top { top: 0; padding-top: max(10px, env(safe-area-inset-top, 0px)); padding-bottom: 6px; justify-content: space-between; }
+.land #top { right: var(--col); padding-right: 12px; }
+#bottom { bottom: 0; padding-top: 6px; padding-bottom: max(20px, env(safe-area-inset-bottom, 0px)); justify-content: center; gap: 14px; }
+.land #bottom {
+  left: auto; top: 0; width: var(--col); flex-direction: column; justify-content: center; gap: 18px;
+  padding: 10px max(10px, env(safe-area-inset-right, 0px)) 10px 10px; border-left: 4px solid var(--ink);
+}
+.left, .right { display: flex; gap: 8px; align-items: center; }
+
+.chip { background: var(--paper); border: 3px solid var(--ink); border-radius: 14px; box-shadow: 0 3px 0 var(--ink);
+  padding: 2px 12px; display: flex; align-items: baseline; gap: 6px; font-variant-numeric: tabular-nums; }
+#score { font-family: var(--display); font-size: 24px; line-height: 1.1; min-width: 2ch; }
+#combo { font-family: var(--display); font-size: 15px; color: var(--berry); }
+#hearts svg { width: 52px; height: 33px; display: block; }
+.icon-btn { width: 38px; height: 38px; border-radius: 12px; border: 3px solid var(--ink); background: var(--paper); color: var(--ink);
+  box-shadow: 0 3px 0 var(--ink); display: grid; place-items: center; cursor: pointer; padding: 0; }
+.icon-btn svg { width: 19px; height: 19px; }
+.get { font-family: var(--display); font-size: 15px; line-height: 1; color: var(--paper); background: var(--berry);
+  border: 3px solid var(--ink); border-radius: 12px; box-shadow: 0 3px 0 var(--ink); padding: 8px 10px 9px; cursor: pointer; }
+.icon-btn:active, .get:active { transform: translateY(2px); box-shadow: 0 1px 0 var(--ink); }
+
+.pw { position: relative; flex: 0 1 118px; min-width: 0; border: 3px solid var(--ink); border-radius: 18px; background: var(--paper);
+  color: var(--ink); box-shadow: 0 4px 0 var(--ink); padding: 6px 6px 8px; cursor: pointer; font-family: var(--body);
+  display: flex; flex-direction: column; align-items: center; gap: 2px; transition: transform .08s; }
+.land .pw { flex: 0 0 auto; width: 100%; }
+.pw:active:not(:disabled) { transform: translateY(3px); box-shadow: 0 1px 0 var(--ink); }
+.pw svg { width: 34px; height: 34px; }
+.pw .name { font-weight: 800; font-size: 13px; line-height: 1; }
+.pw .count { position: absolute; top: -10px; right: -8px; min-width: 24px; height: 24px; padding: 0 5px; border-radius: 12px;
+  background: var(--berry); color: var(--paper); border: 2px solid var(--ink); font-family: var(--display); font-size: 14px; line-height: 20px; text-align: center; }
+.pw.empty { opacity: .45; }
+.pw.empty .count { display: none; }
+.pw.ready { background: var(--egg); }
+.pw.armed { background: var(--pond); color: var(--paper); animation: wobble .5s infinite alternate ease-in-out; }
+.pw.glow { background: var(--egg); animation: glow .7s infinite alternate ease-in-out; z-index: 4; }
+@keyframes wobble { from { transform: rotate(-3deg); } to { transform: rotate(3deg); } }
+@keyframes glow { from { transform: scale(1); box-shadow: 0 4px 0 var(--ink), 0 0 0 0 rgba(255,210,63,.9); }
+  to { transform: scale(1.1); box-shadow: 0 4px 0 var(--ink), 0 0 0 12px rgba(255,210,63,0); } }
+
+#hint { position: absolute; left: 50%; transform: translateX(-50%); z-index: 3; bottom: calc(172px + env(safe-area-inset-bottom, 0px));
+  width: max-content; max-width: calc(100% - 32px); text-align: center; background: var(--ink); color: var(--paper); border-radius: 999px;
+  padding: 6px 18px 7px; font-weight: 800; font-size: 16px; line-height: 1.25; pointer-events: none; }
+.land #hint { left: calc(50% - var(--col) / 2); bottom: max(14px, env(safe-area-inset-bottom, 0px)); }
+#hint.pop { animation: hintpop .35s; }
+@keyframes hintpop { 40% { transform: translateX(-50%) scale(1.12); } }
+
+#hand { position: absolute; left: 0; top: 0; width: 58px; height: 58px; z-index: 6; pointer-events: none; transition: transform .25s ease-out; }
+#hand svg { width: 100%; height: 100%; display: block; animation: tap .8s infinite ease-in-out; transform-origin: 40% 8%; }
+#hand.down svg { rotate: 180deg; }
+@keyframes tap { 0%, 100% { translate: 0 8px; } 50% { translate: 0 0; scale: .9; } }
+
+.overlay { position: absolute; inset: 0; z-index: 8; display: flex; flex-direction: column; overflow: hidden;
+  background: color-mix(in srgb, var(--grass-deep) 60%, transparent);
+  padding: max(12px, env(safe-area-inset-top, 0px)) max(16px, env(safe-area-inset-right, 0px)) max(12px, env(safe-area-inset-bottom, 0px)) max(16px, env(safe-area-inset-left, 0px)); }
+.card { margin: auto; width: min(360px, 100%); background: var(--paper); border: 4px solid var(--ink); border-radius: 24px;
+  box-shadow: 0 7px 0 var(--ink); padding: 20px 20px 18px; text-align: center; display: flex; flex-direction: column; gap: 10px; align-items: center;
+  animation: cardin .45s cubic-bezier(.2, 1.4, .4, 1); }
+@keyframes cardin { from { transform: scale(.6) rotate(-4deg); opacity: 0; } }
+.card h1 { font-family: var(--display); font-weight: 400; font-size: clamp(42px, 13vw, 58px); line-height: .95; margin: 0;
+  color: var(--bill); -webkit-text-stroke: 2px var(--ink); paint-order: stroke fill; text-shadow: 0 4px 0 var(--ink); transform: rotate(-3deg); }
+.card p { margin: 0; font-size: 16px; line-height: 1.35; max-width: 30ch; }
+.card .won { font-family: var(--display); font-size: 22px; line-height: 1.1; }
+.card .col { display: flex; flex-direction: column; gap: 10px; align-items: center; }
+.card .saved svg { width: 104px; height: 65px; display: block; }
+.stats { display: flex; gap: 8px; justify-content: center; font-variant-numeric: tabular-nums; }
+.stats div { min-width: 96px; border: 3px solid var(--ink); border-radius: 14px; padding: 2px 8px; }
+.stats b { display: block; font-family: var(--display); font-weight: 400; font-size: 26px; line-height: 1.1; }
+.stats span { font-size: 11px; font-weight: 800; letter-spacing: .08em; text-transform: uppercase; opacity: .7; }
+.feat { display: flex; gap: 6px; flex-wrap: wrap; justify-content: center; font-size: 13px; font-weight: 800; }
+.feat span { border: 2px solid var(--ink); border-radius: 999px; padding: 0 10px; background: color-mix(in srgb, var(--egg) 45%, var(--paper)); }
+.big { font-family: var(--display); font-size: 26px; color: var(--paper); background: var(--berry); border: 3px solid var(--ink);
+  border-radius: 18px; box-shadow: 0 5px 0 var(--ink); padding: 9px 38px 11px; cursor: pointer; animation: throb 1s infinite ease-in-out; }
+.big:active { transform: translateY(3px); box-shadow: 0 2px 0 var(--ink); }
+@keyframes throb { 50% { scale: 1.07; } }
+.fine { font-size: 12px; opacity: .7; }
+.link { font-family: var(--body); font-weight: 800; font-size: 14px; color: var(--ink); background: none; border: 0; text-decoration: underline; cursor: pointer; padding: 2px 8px; }
+/* short landscape screens: lay the end card out side by side so it fits */
+@media (orientation: landscape) and (max-height: 520px) {
+  .card { width: min(620px, 100%); display: grid; grid-template-columns: 1fr 1fr; column-gap: 18px; row-gap: 8px; padding: 14px 18px; }
+  .card h1 { grid-column: 1; font-size: 44px; }
+  .card .col { grid-column: 2; grid-row: 1 / span 4; display: flex; flex-direction: column; gap: 8px; align-items: center; justify-content: center; }
+}
+@media (prefers-reduced-motion: reduce) { .pw.armed, .pw.glow, .big, #hand svg { animation: none; } }
+</style>
+</head>
+<body>
+<div id="app">
+  <canvas id="game" aria-label="Quaattack! lawn: tap ducks to bonk them"></canvas>
+
+  <div class="bar" id="top">
+    <div class="left">
+      <div class="chip"><span id="score">0</span><span id="combo"></span></div>
+    </div>
+    <div class="right">
+      <div id="hearts" aria-label="Sandwich left"></div>
+      <button class="icon-btn" id="muteBtn" aria-label="Mute sound"><!--@ICON_MUTE@--></button>
+      <button class="get" id="getBtn">Install</button>
+    </div>
+  </div>
+
+  <div class="bar" id="bottom">
+    <button class="pw" id="pw-bread" aria-label="Bread toss"><span class="count">1</span><!--@ICON_BREAD@--><span class="name">Bread</span></button>
+    <button class="pw" id="pw-quack" aria-label="Super Quack"><span class="count">1</span><!--@ICON_QUACK@--><span class="name">Super Quack</span></button>
+  </div>
+
+  <div id="hint" hidden></div>
+  <div id="hand" hidden aria-hidden="true">
+    <svg viewBox="0 0 64 64"><g stroke="#2a2a1c" stroke-width="3" stroke-linejoin="round" stroke-linecap="round">
+      <path d="M21 33V10a5.5 5.5 0 0 1 11 0v17a5 5 0 0 1 9.5 1.5 5 5 0 0 1 9 2.5 4.6 4.6 0 0 1 7.5 3.5V45c0 10-7.5 16-17 16h-5c-7 0-11-3-15-9l-8.5-11.5a4.8 4.8 0 0 1 7.5-6z" fill="#fffdf4"/>
+      <path d="M32 27v8M41.5 28.5v7M50.5 31v5" fill="none"/>
+      <path d="M22 54c5 4 18 5 27 0" fill="none" stroke="#e8e2cf" stroke-width="3"/>
+    </g></svg>
+  </div>
+
+  <div class="overlay" id="endCard" hidden>
+    <div class="card">
+      <h1>Quaattack!</h1>
+      <div class="col">
+        <p class="won" id="endTitle">Sandwich saved!</p>
+        <div class="saved" id="endSandwich"></div>
+        <div class="stats"><div><b id="endScore">0</b><span>Score</span></div><div><b id="endBirds">0</b><span>Birds bonked</span></div></div>
+      </div>
+      <div class="feat"><span>100 levels</span><span>Goose bosses</span><span>Endless mode</span></div>
+      <button class="big" id="ctaBtn">Play Free</button>
+      <button class="link" id="replayBtn">Play the demo again</button>
+    </div>
+  </div>
+</div>
+
+<script>
+(() => {
+"use strict";
+/*@STORE@*/
+const $ = id => document.getElementById(id);
+const cvs = $("game"), ctx = cvs.getContext("2d");
+const TAU = Math.PI * 2;
+const rand = (a, b) => a + Math.random() * (b - a);
+const clamp = (v, a, b) => Math.max(a, Math.min(b, v));
+
+/* ---------- state the shared game code expects ---------- */
+let W = 0, H = 0, DPR = 1, U = 1, FT = 0, FB = 0, PX = 0, PY = 0, bg = null;
+const ZOOM = 1;
+const SAVE = { look: { sandwich: "classic", blanket: "red" } };
+const INV = { bread: 1, quack: 1 };
+let G = null, AC = null, superQuackBuf = null, muted = false, sandwichId = 0;
+const bonkClips = {};
+const persist = () => {}, inMoat = () => false, drawMoat = () => {}, drawPossum = () => {}, moatRect = () => [0, 0, 0, 0];
+const playDead = () => {}, bonkPossum = () => {};
+const quackEvery = () => 4;
+let tuneSpeed = 0.7; // duck pace for the current beat of the ad (1 = the game's wave 1)
+const speedMul = () => tuneSpeed * U;
+
+/* ---------- lifted from src/game.html at build time ---------- */
+/*@SHARED@*/
+
+/* ---------- audio ---------- */
+function loadClips() {
+  decodeClip(SUPER_QUACK_MP3).then(b => { superQuackBuf = b; }).catch(() => {});
+  for (const [type, uri] of [["mallard", DUCK_QUACK_MP3], ["duckling", DUCKLING_QUACK_MP3], ["goose", GOOSE_HONK_MP3], ["rubber", RUBBER_DUCK_MP3]])
+    decodeClip(uri).then(b => { bonkClips[type] = b; }).catch(() => {});
+}
+function playClip(buf, vol = 1) {
+  if (!AC || muted || !buf) return false;
+  const src = AC.createBufferSource(), g = AC.createGain();
+  src.buffer = buf; g.gain.value = vol; src.connect(g); g.connect(AC.destination); src.start();
+  return true;
+}
+function wakeAudio() { // ads must stay silent until the viewer touches them
+  if (!AC) { try { AC = new (window.AudioContext || window.webkitAudioContext)(); loadClips(); } catch (e) { AC = null; } }
+  if (AC && AC.state === "suspended") AC.resume().catch(() => {});
+}
+function syncMute() {
+  const w = document.getElementById("muteWave"), x = document.getElementById("muteX");
+  if (w) w.toggleAttribute("hidden", muted);
+  if (x) x.toggleAttribute("hidden", !muted);
+  $("muteBtn").setAttribute("aria-label", muted ? "Unmute sound" : "Mute sound");
+}
+$("muteBtn").addEventListener("click", () => { muted = !muted; syncMute(); wakeAudio(); });
+
+/* ---------- store link (MRAID first, then the network's own hooks, then a plain link) ---------- */
+function storeUrl() {
+  const ua = navigator.userAgent || "";
+  const ios = /iPhone|iPad|iPod/i.test(ua) || (navigator.platform === "MacIntel" && navigator.maxTouchPoints > 1);
+  return ios ? STORE.ios : STORE.android;
+}
+function openStore() {
+  const url = storeUrl();
+  try { if (window.FbPlayableAd) return window.FbPlayableAd.onCTAClick(); } catch (e) {}
+  try { if (window.ExitApi && window.ExitApi.exit) return window.ExitApi.exit(); } catch (e) {}
+  try { if (window.mraid && window.mraid.open) return window.mraid.open(url); } catch (e) {}
+  if (!window.open(url, "_blank")) location.href = url;
+}
+$("getBtn").addEventListener("click", openStore);
+$("ctaBtn").addEventListener("click", openStore);
+
+/* ---------- layout: portrait has power-ups along the bottom, landscape in a column on the right ---------- */
+// The ad only ever takes the size its frame gives it: #app is pinned to the frame with CSS and clips
+// everything inside, and nothing here writes a size back. Ad previews (AppLovin's included) show the ad in
+// an iframe, and iOS Safari grows an iframe to fit content that spills over, so any explicit size or
+// overflow would make the ad grow past its phone frame.
+let lastView = "";
+function viewSize() { const a = $("app"); return [a.clientWidth, a.clientHeight]; }
+function resize() {
+  const app = $("app"), [vw, vh] = viewSize();
+  lastView = vw + "x" + vh;
+  if (!vw || !vh) return; // not laid out yet; the per-frame check retries
+  const land = vw > vh * 1.15;
+  app.classList.toggle("land", land);
+  DPR = Math.min(2, window.devicePixelRatio || 1);
+  W = cvs.clientWidth; H = cvs.clientHeight;
+  cvs.width = Math.round(W * DPR); cvs.height = Math.round(H * DPR);
+  U = clamp(Math.min(W, H * 0.8) / 420, 0.72, 1.45);
+  FT = $("top").offsetTop + $("top").offsetHeight;
+  FB = land ? H : $("bottom").offsetTop;
+  PX = W / 2; PY = FT + (FB - FT) * (land ? 0.5 : 0.52);
+  buildBg();
+}
+
+/* ---------- the guided run ---------- */
+const S = { step: null, t: 0, total: 0, idle: 0, freeze: false, queue: [], qt: 0, bonked0: 0, gooseIn: false, done: 0, hint: "" };
+
+function hint(text) {
+  const h = $("hint");
+  if (!text) { h.hidden = true; S.hint = ""; return; }
+  if (S.hint !== text) { h.textContent = text; h.classList.remove("pop"); void h.offsetWidth; h.classList.add("pop"); }
+  h.hidden = false; S.hint = text;
+}
+function glow(k) { for (const b of ["bread", "quack"]) $("pw-" + b).classList.toggle("glow", b === k); }
+function banner(text, sub) { G.banner = { text, sub, t: 0 }; }
+
+// where a duck enters: side of the field plus how far along it (0..1)
+function edge(side, f, m) {
+  switch (side) {
+    case "top": return [W * f, FT - m];
+    case "bottom": return [W * f, FB + m];
+    case "left": return [-m, FT + (FB - FT) * f];
+    default: return [W + m, FT + (FB - FT) * f];
+  }
+}
+function spawn(type, side, f) {
+  const r = TYPES[type].r * U, [x, y] = edge(side, f, r * 1.2);
+  if (type === "duckling") { // ducklings come in a line of three, like the game
+    const dx = PX - x, dy = PY - y, d = Math.hypot(dx, dy) || 1;
+    for (let k = 0; k < 3; k++) G.ducks.push(makeDuck(type, x - dx / d * k * r * 2.6, y - dy / d * k * r * 2.6));
+  } else G.ducks.push(makeDuck(type, x, y));
+}
+function queue(list) { S.queue = list.slice().sort((a, b) => a[0] - b[0]); S.qt = 0; }
+const walkers = () => G.ducks.filter(d => d.state === "walk");
+const cleared = () => !S.queue.length && !walkers().length;
+const SIDES = ["top", "left", "right", "bottom"];
+
+// Each beat has a time limit, so the whole ad reaches the end card in about 25 seconds even if nobody taps.
+// When a beat runs out, the leftover ducks run off; when a power-up prompt is ignored, the ad uses it for the viewer.
+const STEPS = {
+  tap: {
+    enter() {
+      tuneSpeed = 0.9;
+      banner("Protect the sandwich!");
+      hint("Tap the ducks to bonk them!");
+      queue([[0.15, "mallard", "top", 0.3], [0.75, "mallard", "right", 0.35], [1.35, "mallard", "left", 0.7]]);
+    },
+    update() {
+      const n = G.bonked - S.bonked0;
+      if (n >= 1 && n < 3) hint(`Nice bonk! ${3 - n} more`);
+      if (cleared()) return next("bread", 0.3);
+      if (S.t > 4.5) { shoo(); next("bread", 0.2); }
+    },
+    hand() { return nearestDuck(true); }
+  },
+  bread: {
+    enter() {
+      tuneSpeed = 0.95; hint(""); INV.bread = 1; updateHud();
+      banner("Here comes a flock!");
+      queue([0, 0.12, 0.24, 0.36, 0.48].map((t, i) => [0.15 + t, "mallard", SIDES[i % 4], [0.2, 0.75, 0.3, 0.6, 0.85][i]]));
+      S.phase = "incoming";
+    },
+    update() {
+      if (S.phase === "incoming" && S.t > 1.2) {
+        if (G.mode === "bread") { phase("aim"); S.freeze = true; hint("Now tap the grass to toss it"); }
+        else if (G.bread || G.toss) phase("after");
+        else { phase("button"); S.freeze = true; glow("bread"); hint("Too many! Tap BREAD to distract them"); }
+      }
+      if (S.phase === "button" && S.t - S.phaseAt > 2) this.onPower("bread");
+      if (S.phase === "aim" && S.t - S.phaseAt > 1.8) { const p = this.hand(); throwBread(p.x, p.y); }
+      if (S.phase === "aim" && !G.mode) phase("snack"); // tossed
+      if (S.phase === "snack") { S.freeze = false; glow(null); hint("They're snacking. Bonk 'em!"); phase("after"); }
+      if (S.phase === "after" && (cleared() || S.t - S.phaseAt > 2.8)) { shoo(); next("ducklings", 0.3); }
+    },
+    onPower(k) {
+      if (k !== "bread" || S.phase === "snack" || S.phase === "after") return false;
+      if (S.phase === "aim") return true; // already aiming
+      phase("aim"); glow(null); setMode("bread");
+      hint("Now tap the grass to toss it");
+      return true;
+    },
+    hand() {
+      if (S.phase === "button") return btnPoint("pw-bread");
+      if (S.phase === "aim") return { x: W * 0.78, y: FT + (FB - FT) * 0.2, dir: "up" };
+      if (S.phase === "after") return nearestDuck(S.idle > 1);
+      return null;
+    }
+  },
+  ducklings: {
+    enter() {
+      tuneSpeed = 0.95;
+      banner("Ducklings!");
+      hint("Ducklings are fast. Bonk 'em!");
+      queue([[0.1, "duckling", "left", 0.3], [0.6, "duckling", "right", 0.7]]);
+    },
+    update() {
+      if (cleared()) return next("swarm", 0.3);
+      if (S.t > 3.6) { shoo(); next("swarm", 0.2); }
+    },
+    hand() { return nearestDuck(S.idle > 0.8); }
+  },
+  swarm: {
+    enter() {
+      tuneSpeed = 1.05; hint("");
+      banner("SWARM!");
+      INV.quack = 1; updateHud();
+      const list = [];
+      for (let i = 0; i < 28; i++) {
+        const roll = Math.random(), type = i % 9 === 4 ? "duckling" : roll < 0.25 ? "rubber" : "mallard";
+        list.push([0.1 + i * 0.04, type, SIDES[i % 4], rand(0.05, 0.95)]);
+      }
+      queue(list);
+      S.phase = "incoming";
+    },
+    update() {
+      if (S.phase === "incoming" && S.t > 1.2) { phase("button"); S.freeze = true; glow("quack"); hint("Way too many! SUPER QUACK!"); }
+      if (S.phase === "button" && S.t - S.phaseAt > 2) this.onPower("quack");
+      if (S.phase === "fled" && S.t - S.phaseAt > 1) return next("goose", 0);
+    },
+    onPower(k) {
+      if (k !== "quack" || S.phase === "fled") return false;
+      S.queue = []; S.freeze = false; glow(null); hint("");
+      superQuack();
+      phase("fled");
+      return true;
+    },
+    hand() { return S.phase === "button" ? btnPoint("pw-quack") : null; }
+  },
+  goose: {
+    enter() {
+      tuneSpeed = 0.55;
+      banner("MAGIC GOOSE!", "Now you see him, now you don't");
+      hint("Bonk the goose! He teleports");
+      queue([[0.1, "goose", "top", 0.5]]);
+      S.gooseIn = false; S.gooseBonked = false;
+    },
+    update() {
+      const goose = G.ducks.find(d => d.type === "goose");
+      if (goose && !S.gooseIn) { S.gooseIn = true; goose.hp = goose.maxHp = GOOSE_HP; }
+      if (goose && goose.state === "dizzy") S.gooseBonked = true;
+      if (goose && goose.state === "walk") {
+        const left = goose.hp;
+        hint(left === goose.maxHp ? "Bonk the goose! He teleports" : left > 1 ? `Keep bonking! ${left} more` : "One more bonk!");
+      }
+      if (S.gooseIn && !G.ducks.some(d => d.type === "goose" && d.state !== "dizzy")) {
+        if (!S.gooseDown) { S.gooseDown = true; if (S.gooseBonked) { hint("Goose defeated!"); G.shake = 14; G.flash = 0.6; SFX.wave(); } }
+        return next("end", 0.8);
+      }
+      if (S.t > 6 && goose && goose.state === "walk") { // out of time: he vanishes in a puff
+        puff(goose.x, goose.y - goose.r * 0.5, 16, "#9b7bff"); addText(goose.x, goose.y - goose.r * 1.6, "poof!", "#6b4bd6", 22);
+        goose.state = "gone"; shoo(); next("end", 0.5);
+      }
+    },
+    hand() {
+      const g = G.ducks.find(d => d.type === "goose" && d.state === "walk");
+      return g ? { x: g.x, y: g.y + g.r * 0.2, dir: "up" } : null;
+    }
+  },
+  end: {
+    enter() {
+      S.freeze = false; glow(null); hint(""); $("hand").hidden = true; shoo();
+      $("endTitle").textContent = G.hearts >= 3 ? "Sandwich saved! Not a crumb lost." : G.hearts === 2 ? "Sandwich saved!" : "Sandwich saved. Barely.";
+      $("endSandwich").innerHTML = sandwichSVG(G.hearts);
+      $("endScore").textContent = G.score;
+      $("endBirds").textContent = G.bonked;
+      SFX.wave(); setTimeout(() => SFX.ready(), 350);
+      $("endCard").hidden = false;
+    },
+    update() {}
+  }
+};
+const GOOSE_HP = 4;   // the game's goose takes 6; the ad keeps it short
+const END_BY = 25;    // seconds: the end card shows by now no matter what
+
+function phase(p) { S.phase = p; S.phaseAt = S.t; }
+function shoo() { // leftover ducks waddle off fast so the next beat starts clean
+  S.queue = [];
+  for (const d of G.ducks) if (d.state === "walk") { d.state = "flee"; d.t = 0; d.vx = (d.x < PX ? -1 : 1) * 420 * U; d.vy = -160 * U; d.face = d.x < PX ? -1 : 1; }
+}
+
+function next(step, delay) { if (S.nextStep) return; S.nextStep = step; S.nextAt = S.total + delay; } // once per step
+function go(step) {
+  S.step = step; S.t = 0; S.idle = 0; S.phase = null; S.nextStep = null; S.bonked0 = G.bonked; S.gooseDown = false; S.downAt = undefined;
+  STEPS[step].enter();
+}
+function nearestDuck(show) {
+  if (!show) return null;
+  let best = null, bd = Infinity;
+  for (const d of walkers()) {
+    if (d.x < 10 || d.x > W - 10 || d.y < FT + 10 || d.y > FB - 10) continue; // only point at birds on screen
+    const dd = Math.hypot(d.x - PX, d.y - PY);
+    if (dd < bd) { bd = dd; best = d; }
+  }
+  return best && { x: best.x, y: best.y + best.r * 0.2, dir: "up" };
+}
+function btnPoint(id) {
+  const b = $(id).getBoundingClientRect(), a = $("app").getBoundingClientRect();
+  const land = $("app").classList.contains("land");
+  return { x: (b.left + b.width / 2 - a.left) / ZOOM, y: (b.top + (land ? b.height * 0.5 : b.height * 0.3) - a.top) / ZOOM, dir: land ? "up" : "down" };
+}
+function placeHand() {
+  const h = $("hand"), st = STEPS[S.step], p = st && st.hand && st.hand();
+  if (!p) { h.hidden = true; return; }
+  h.hidden = false; h.classList.toggle("down", p.dir === "down");
+  // fingertip sits at (26, 4) of the 64-unit drawing (58px box); pointing down flips it to the bottom
+  const tx = p.dir === "down" ? 58 - 26 / 64 * 58 : 26 / 64 * 58, ty = p.dir === "down" ? 58 - 4 / 64 * 58 : 4 / 64 * 58;
+  h.style.transform = `translate(${p.x - tx}px, ${p.y - ty}px)`;
+}
+
+/* ---------- HUD and modes the shared code calls ---------- */
+function updateHud() {
+  $("score").textContent = G.score;
+  const mult = Math.min(5, 1 + Math.floor(G.combo / 5));
+  $("combo").textContent = mult > 1 ? "x" + mult : "";
+  if ($("hearts").dataset.h !== String(G.hearts)) { $("hearts").dataset.h = G.hearts; $("hearts").innerHTML = sandwichSVG(G.hearts); }
+  for (const k of ["bread", "quack"]) {
+    const b = $("pw-" + k);
+    b.querySelector(".count").textContent = INV[k];
+    b.classList.toggle("empty", INV[k] === 0);
+    b.classList.toggle("ready", INV[k] > 0 && G.mode !== k);
+    b.classList.toggle("armed", G.mode === k);
+  }
+}
+function setMode(m) { G.mode = G.mode === m ? null : m; updateHud(); }
+function hurt(d) { // a peck costs a bite, but the demo never ends early
+  G.hearts = Math.max(1, G.hearts - 1);
+  G.hurtT = 0.6; G.shake = 14; G.combo = 0; G.comboT = 0;
+  puff(d.x, d.y, 10, TYPES[d.type].body);
+  addText(PX, PY - 50 * U, d.type === "goose" ? "HONK!" : "Peck!", "#e8434f", 26);
+  SFX.hurt(); updateHud();
+}
+
+function newRun() {
+  G = { ducks: [], fx: [], texts: [], possums: [], bread: null, toss: null, moat: null, mode: null, charges: INV,
+    score: 0, hearts: 3, combo: 0, comboT: 0, sinceQuack: 0, bonked: 0, banner: null, spawnT: 0,
+    shake: 0, flash: 0, hurtT: 0, quackT: 0, running: true, t: 0 };
+  INV.bread = 1; INV.quack = 1;
+  Object.assign(S, { total: 0, freeze: false, queue: [], hint: "" });
+  $("endCard").hidden = true; $("hearts").dataset.h = "";
+  glow(null); updateHud(); go("tap");
+}
+
+/* ---------- update (the game's duck movement, minus waves and possums) ---------- */
+function update(rdt) {
+  S.total += rdt; S.t += rdt; S.idle += rdt;
+  if (S.nextStep && S.total >= S.nextAt) go(S.nextStep);
+  if (S.step !== "end" && S.total > END_BY) go("end");
+  let dt = rdt * (S.freeze ? 0.1 : G.mode ? 0.35 : 1);
+  G.t += dt;
+  G.shake = Math.max(0, G.shake - rdt * 40);
+  G.flash = Math.max(0, G.flash - rdt * 1.6);
+  G.hurtT = Math.max(0, G.hurtT - rdt);
+  G.quackT = Math.max(0, G.quackT - rdt);
+  if (G.comboT > 0 && (G.comboT -= dt) <= 0) { G.combo = 0; updateHud(); }
+  if (G.banner && (G.banner.t += rdt) > 1.8) G.banner = null;
+
+  S.qt += dt;
+  while (S.queue.length && S.queue[0][0] <= S.qt) { const [, type, side, f] = S.queue.shift(); spawn(type, side, f); }
+
+  if (G.toss && (G.toss.t += dt) >= G.toss.dur) {
+    G.bread = { x: G.toss.x1, y: G.toss.y1, t: 0, life: 14 };
+    G.toss = null;
+    puff(G.bread.x, G.bread.y, 6, "#fbe3a8");
+    if (S.step === "bread") S.phase = "snack";
+  }
+  if (G.bread && (G.bread.t += dt) > G.bread.life) G.bread = null;
+
+  const pr = 30 * U;
+  for (const d of G.ducks) {
+    d.t += dt; d.hitT = Math.max(0, d.hitT - dt);
+    if (d.warpT) d.warpT = Math.max(0, d.warpT - dt);
+    if (d.state === "dizzy") continue;
+    if (d.state === "flee") { d.x += d.vx * dt; d.y += d.vy * dt; d.vy -= 200 * U * dt; continue; }
+    let tx = PX, ty = PY, toBread = false;
+    if (G.bread) {
+      toBread = true;
+      const ring = 26 * U + d.r;
+      tx = G.bread.x + Math.cos(d.orbit) * ring; ty = G.bread.y + Math.sin(d.orbit) * ring * 0.7;
+    }
+    const dx = tx - d.x, dy = ty - d.y, dist = Math.hypot(dx, dy) || 1;
+    d.eating = toBread && dist < 6 * U;
+    if (!d.eating) {
+      const sp = d.speed * (toBread ? 1.4 : 1);
+      let mx = dx / dist, my = dy / dist;
+      if (d.type === "rubber") { const z = Math.sin(d.t * 4 + d.zig) * 0.7; mx += -my * z; my += (dx / dist) * z; const ml = Math.hypot(mx, my); mx /= ml; my /= ml; }
+      const step = Math.min(dist, sp * dt);
+      d.x += mx * step; d.y += my * step;
+      d.phase += dt * (d.speed / (40 * U));
+      if (Math.abs(dx) > 2) d.face = dx > 0 ? 1 : -1;
+    } else d.phase += dt * 0.3;
+    if (!toBread && Math.hypot(PX - d.x, PY - d.y) < pr + d.r * 0.4) { d.state = "gone"; hurt(d); }
+  }
+  const ds = G.ducks; // keep crowds from stacking into one blob
+  for (let i = 0; i < ds.length; i++) {
+    const a = ds[i]; if (a.state !== "walk") continue;
+    for (let j = i + 1; j < ds.length; j++) {
+      const b = ds[j]; if (b.state !== "walk") continue;
+      const dx = b.x - a.x, dy = b.y - a.y, min = (a.r + b.r) * 0.8, dd = dx * dx + dy * dy;
+      if (dd > 0 && dd < min * min) { const d = Math.sqrt(dd), push = (min - d) / 2; a.x -= dx / d * push; a.y -= dy / d * push; b.x += dx / d * push; b.y += dy / d * push; }
+    }
+  }
+  G.ducks = G.ducks.filter(d => {
+    if (d.state === "gone") return false;
+    if (d.state === "dizzy") return d.t < 0.6;
+    if (d.state === "flee") return d.x > -100 && d.x < W + 100 && d.y > -150 && d.y < H + 100;
+    return true;
+  });
+  for (const f of G.fx) { f.t += rdt; if (!f.ring) { f.x += f.vx * rdt; f.y += f.vy * rdt; f.vx *= 0.9; f.vy *= 0.9; } }
+  G.fx = G.fx.filter(f => f.t < f.life);
+  for (const t of G.texts) { t.t += rdt; t.y -= 40 * rdt; }
+  G.texts = G.texts.filter(t => t.t < 0.9);
+  STEPS[S.step].update();
+}
+
+/* ---------- input ---------- */
+cvs.addEventListener("pointerdown", e => {
+  e.preventDefault();
+  if (!G || S.step === "end" || paused) return;
+  wakeAudio(); S.idle = 0;
+  const r = cvs.getBoundingClientRect(), x = (e.clientX - r.left) * W / r.width, y = (e.clientY - r.top) * H / r.height;
+  if (G.mode === "bread") return throwBread(x, y);
+  bonkAt(x, y);
+});
+for (const k of ["bread", "quack"]) {
+  $("pw-" + k).addEventListener("click", () => {
+    if (!G || S.step === "end" || paused) return;
+    wakeAudio(); S.idle = 0;
+    if (INV[k] <= 0) { SFX.whiff(); return; }
+    const st = STEPS[S.step];
+    if (st.onPower && st.onPower(k)) return;
+    if (k === "quack") superQuack(); else setMode("bread");
+  });
+}
+$("replayBtn").addEventListener("click", () => { wakeAudio(); newRun(); });
+
+/* ---------- loop, with MRAID-aware start and pause ---------- */
+let paused = false, booted = false, last = 0;
+function frame(now) {
+  const dt = Math.min(0.05, (now - last) / 1000); last = now;
+  if (!paused) update(dt);
+  render();
+  if (S.freeze) { ctx.fillStyle = "rgba(42,42,28,0.18)"; ctx.fillRect(0, 0, W, H); }
+  const [vw, vh] = viewSize(); // catch silent resizes (cheap: two property reads a frame)
+  if (vw + "x" + vh !== lastView) resize();
+  placeHand();
+  requestAnimationFrame(frame);
+}
+function boot() {
+  if (booted) return; booted = true;
+  resize(); newRun(); syncMute();
+  last = performance.now();
+  requestAnimationFrame(frame);
+}
+function whenFontsReady(fn) {
+  const fonts = document.fonts;
+  if (!fonts || !fonts.load) return fn();
+  let done = false; const go = () => { if (!done) { done = true; fn(); } };
+  Promise.all([fonts.load('20px "Bagel Fat One"'), fonts.load('800 16px "Baloo 2"')]).then(go, go);
+  setTimeout(go, 600);
+}
+function setVisible(v) { paused = !v; if (!v && AC) AC.suspend().catch(() => {}); else if (v && AC) AC.resume().catch(() => {}); }
+function start() {
+  const m = window.mraid;
+  if (!m) return whenFontsReady(boot);
+  const ready = () => {
+    try { m.addEventListener("viewableChange", v => { if (v) whenFontsReady(boot); if (booted) { setVisible(v); resize(); } }); } catch (e) {}
+    try { m.addEventListener("sizeChange", () => booted && resize()); } catch (e) {}
+    let viewable = true;
+    try { viewable = m.isViewable(); } catch (e) {}
+    if (viewable) whenFontsReady(boot);
+  };
+  try { m.getState() === "loading" ? m.addEventListener("ready", ready) : ready(); } catch (e) { whenFontsReady(boot); }
+}
+document.addEventListener("visibilitychange", () => booted && setVisible(!document.hidden));
+window.addEventListener("resize", () => booted && resize());
+if (window.ResizeObserver) new ResizeObserver(() => { if (booted && (cvs.clientWidth !== W || cvs.clientHeight !== H)) resize(); }).observe(cvs);
+if (document.readyState === "complete") start(); else window.addEventListener("load", start);
+})();
+</script>
+</body>
+</html>
