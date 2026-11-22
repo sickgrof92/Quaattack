@@ -23,7 +23,7 @@ A small **Install** button stays in the top corner the whole time.
 - About 250 KB, well under the usual 2 MB and 5 MB limits.
 - MRAID 2.0/3.0 aware. It waits for `ready` and for the ad to be viewable before starting, pauses when hidden, and opens the store with `mraid.open()`.
   Without MRAID, it uses the network's own hook when one exists (`FbPlayableAd.onCTAClick()` for Meta, `ExitApi.exit()` for Google Ads), then `window.open()`.
-- Works in portrait and landscape. In landscape the power-ups move into a column on the right. Tablets get the phone layout scaled up.
+- Works in portrait and landscape. In landscape the power-ups move into a column on the right. It sizes itself only from the space its frame gives it and clips everything inside, so it never spills past the phone frame in previews like AppLovin's (which show the ad in an iframe).
 - Silent until the first touch, with a mute button.
 
 Most networks (AppLovin, Unity, ironSource, Mintegral, Liftoff, Vungle) inject `mraid.js` themselves, so the file doesn't include a `<script src="mraid.js">` tag.

@@ -18,13 +18,13 @@
 }
 * { box-sizing: border-box; }
 [hidden] { display: none !important; }
-html, body { margin: 0; height: 100%; overflow: hidden; }
+html, body { margin: 0; padding: 0; width: 100%; height: 100%; overflow: hidden; position: fixed; inset: 0; }
 body {
   background: var(--grass-deep); color: var(--ink); font-family: var(--body);
   -webkit-user-select: none; user-select: none; -webkit-tap-highlight-color: transparent;
   -webkit-touch-callout: none; touch-action: none; overscroll-behavior: none;
 }
-#app { position: fixed; left: 0; top: 0; width: 100%; height: 100%; overflow: hidden; transform-origin: 0 0; background: var(--grass-deep); }
+#app { position: fixed; inset: 0; overflow: hidden; contain: strict; background: var(--grass-deep); }
 #game { position: absolute; left: 0; top: 0; width: 100%; height: 100%; display: block; touch-action: none; }
 .land #game { width: calc(100% - var(--col)); }
 
@@ -171,7 +171,8 @@ const rand = (a, b) => a + Math.random() * (b - a);
 const clamp = (v, a, b) => Math.max(a, Math.min(b, v));
 
 /* ---------- state the shared game code expects ---------- */
-let W = 0, H = 0, DPR = 1, U = 1, FT = 0, FB = 0, PX = 0, PY = 0, bg = null, ZOOM = 1;
+let W = 0, H = 0, DPR = 1, U = 1, FT = 0, FB = 0, PX = 0, PY = 0, bg = null;
+const ZOOM = 1;
 const SAVE = { look: { sandwich: "classic", blanket: "red" } };
 const INV = { bread: 1, quack: 1 };
 let G = null, AC = null, superQuackBuf = null, muted = false, sandwichId = 0;
@@ -226,23 +227,19 @@ $("getBtn").addEventListener("click", openStore);
 $("ctaBtn").addEventListener("click", openStore);
 
 /* ---------- layout: portrait has power-ups along the bottom, landscape in a column on the right ---------- */
+// The ad only ever takes the size its frame gives it: #app is pinned to the frame with CSS and clips
+// everything inside, and nothing here writes a size back. Ad previews (AppLovin's included) show the ad in
+// an iframe, and iOS Safari grows an iframe to fit content that spills over, so any explicit size or
+// overflow would make the ad grow past its phone frame.
 let lastView = "";
-function viewSize() {
-  const d = document.documentElement;
-  return [d.clientWidth || innerWidth, d.clientHeight || innerHeight];
-}
+function viewSize() { const a = $("app"); return [a.clientWidth, a.clientHeight]; }
 function resize() {
-  // Measure the page's real layout box, not innerWidth/innerHeight: ad web views (AppLovin's preview, for one)
-  // can report a window bigger than what they show, or resize after load without firing "resize".
   const app = $("app"), [vw, vh] = viewSize();
   lastView = vw + "x" + vh;
+  if (!vw || !vh) return; // not laid out yet; the per-frame check retries
   const land = vw > vh * 1.15;
   app.classList.toggle("land", land);
-  ZOOM = land ? Math.max(1, Math.min(vw / 932, vh / 430)) : Math.max(1, Math.min(vw / 430, vh / 932));
-  app.style.width = ZOOM > 1 ? vw / ZOOM + "px" : "";
-  app.style.height = ZOOM > 1 ? vh / ZOOM + "px" : "";
-  app.style.transform = ZOOM > 1 ? `scale(${ZOOM})` : "";
-  DPR = Math.min(2, window.devicePixelRatio || 1) * ZOOM;
+  DPR = Math.min(2, window.devicePixelRatio || 1);
   W = cvs.clientWidth; H = cvs.clientHeight;
   cvs.width = Math.round(W * DPR); cvs.height = Math.round(H * DPR);
   U = clamp(Math.min(W, H * 0.8) / 420, 0.72, 1.45);
