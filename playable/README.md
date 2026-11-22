@@ -40,8 +40,6 @@ To change a link, for example to add campaign tracking parameters, rebuild with 
 IOS_URL="https://apps.apple.com/app/id6828147105?pt=…&ct=…" npm run playable
 ```
 
-`ANDROID_URL` works the same way, for example to add campaign tracking parameters.
-
 ## Editing
 
 The ad's flow, layout and text live in `playable/playable.html`.
