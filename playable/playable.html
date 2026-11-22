@@ -24,7 +24,7 @@ body {
   -webkit-user-select: none; user-select: none; -webkit-tap-highlight-color: transparent;
   -webkit-touch-callout: none; touch-action: none; overscroll-behavior: none;
 }
-#app { position: relative; width: 100%; height: 100%; overflow: hidden; transform-origin: 0 0; background: var(--grass-deep); }
+#app { position: fixed; left: 0; top: 0; width: 100%; height: 100%; overflow: hidden; transform-origin: 0 0; background: var(--grass-deep); }
 #game { position: absolute; left: 0; top: 0; width: 100%; height: 100%; display: block; touch-action: none; }
 .land #game { width: calc(100% - var(--col)); }
 
@@ -226,8 +226,16 @@ $("getBtn").addEventListener("click", openStore);
 $("ctaBtn").addEventListener("click", openStore);
 
 /* ---------- layout: portrait has power-ups along the bottom, landscape in a column on the right ---------- */
+let lastView = "";
+function viewSize() {
+  const d = document.documentElement;
+  return [d.clientWidth || innerWidth, d.clientHeight || innerHeight];
+}
 function resize() {
-  const app = $("app"), vw = innerWidth, vh = innerHeight;
+  // Measure the page's real layout box, not innerWidth/innerHeight: ad web views (AppLovin's preview, for one)
+  // can report a window bigger than what they show, or resize after load without firing "resize".
+  const app = $("app"), [vw, vh] = viewSize();
+  lastView = vw + "x" + vh;
   const land = vw > vh * 1.15;
   app.classList.toggle("land", land);
   ZOOM = land ? Math.max(1, Math.min(vw / 932, vh / 430)) : Math.max(1, Math.min(vw / 430, vh / 932));
@@ -582,6 +590,8 @@ function frame(now) {
   if (!paused) update(dt);
   render();
   if (S.freeze) { ctx.fillStyle = "rgba(42,42,28,0.18)"; ctx.fillRect(0, 0, W, H); }
+  const [vw, vh] = viewSize(); // catch silent resizes (cheap: two property reads a frame)
+  if (vw + "x" + vh !== lastView) resize();
   placeHand();
   requestAnimationFrame(frame);
 }
@@ -603,7 +613,7 @@ function start() {
   const m = window.mraid;
   if (!m) return whenFontsReady(boot);
   const ready = () => {
-    try { m.addEventListener("viewableChange", v => { if (v) whenFontsReady(boot); if (booted) setVisible(v); }); } catch (e) {}
+    try { m.addEventListener("viewableChange", v => { if (v) whenFontsReady(boot); if (booted) { setVisible(v); resize(); } }); } catch (e) {}
     try { m.addEventListener("sizeChange", () => booted && resize()); } catch (e) {}
     let viewable = true;
     try { viewable = m.isViewable(); } catch (e) {}
