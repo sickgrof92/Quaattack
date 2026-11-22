@@ -25,7 +25,7 @@ body {
   -webkit-user-select: none; user-select: none; -webkit-tap-highlight-color: transparent;
   -webkit-touch-callout: none; touch-action: none; overscroll-behavior: none;
 }
-#app { position: fixed; inset: 0; overflow: hidden; contain: strict; background: var(--grass-deep); }
+#app { position: fixed; left: 0; top: 0; width: 100%; height: 100%; overflow: hidden; contain: strict; background: var(--grass-deep); }
 #game { position: absolute; left: 0; top: 0; width: 100%; height: 100%; display: block; touch-action: none; }
 .land #game { width: calc(100% - var(--col)); }
 
@@ -71,6 +71,9 @@ body {
 @keyframes glow { from { transform: scale(1); box-shadow: 0 4px 0 var(--ink), 0 0 0 0 rgba(255,210,63,.9); }
   to { transform: scale(1.1); box-shadow: 0 4px 0 var(--ink), 0 0 0 12px rgba(255,210,63,0); } }
 
+#stamp { position: absolute; left: 12px; top: 64px; z-index: 9; pointer-events: none; font: 700 11px/1.3 var(--body);
+  background: var(--ink); color: var(--paper); border-radius: 6px; padding: 1px 6px; opacity: .85; transition: opacity .5s; }
+#stamp.gone { opacity: 0; }
 #hint { position: absolute; left: 50%; transform: translateX(-50%); z-index: 3; bottom: calc(172px + env(safe-area-inset-bottom, 0px));
   width: max-content; max-width: calc(100% - 32px); text-align: center; background: var(--ink); color: var(--paper); border-radius: 999px;
   padding: 6px 18px 7px; font-weight: 800; font-size: 16px; line-height: 1.25; pointer-events: none; }
@@ -138,6 +141,7 @@ body {
   </div>
 
   <div id="hint" hidden></div>
+  <div id="stamp" aria-hidden="true"></div>
   <div id="hand" hidden aria-hidden="true">
     <svg viewBox="0 0 64 64"><g stroke="#2a2a1c" stroke-width="3" stroke-linejoin="round" stroke-linecap="round">
       <path d="M21 33V10a5.5 5.5 0 0 1 11 0v17a5 5 0 0 1 9.5 1.5 5 5 0 0 1 9 2.5 4.6 4.6 0 0 1 7.5 3.5V45c0 10-7.5 16-17 16h-5c-7 0-11-3-15-9l-8.5-11.5a4.8 4.8 0 0 1 7.5-6z" fill="#fffdf4"/>
@@ -895,12 +899,36 @@ $("ctaBtn").addEventListener("click", openStore);
 // everything inside, and nothing here writes a size back. Ad previews (AppLovin's included) show the ad in
 // an iframe, and iOS Safari grows an iframe to fit content that spills over, so any explicit size or
 // overflow would make the ad grow past its phone frame.
+// Build stamp, shown for the first 8 seconds: which build this is and the sizes the ad was given,
+// so a preview screenshot shows whether the newest file was uploaded and what the container reported.
+const BUILD = "11-22 13:43 UTC";
+function stamp() {
+  const el = $("stamp"); if (!el || el.classList.contains("gone")) return;
+  const [fw, fh] = frameSize(), m = mraidSize();
+  el.textContent = `build ${BUILD} · frame ${fw}×${fh} · window ${innerWidth}×${innerHeight}` + (m ? ` · mraid ${m[0]}×${m[1]}` : " · no mraid");
+}
+setTimeout(() => { const el = $("stamp"); if (el) el.classList.add("gone"); }, 8000);
+// If the ad container reports a max size through MRAID that's smaller than the frame (a preview's
+// simulated phone screen, for example), the ad sizes itself to that instead.
 let lastView = "";
-function viewSize() { const a = $("app"); return [a.clientWidth, a.clientHeight]; }
+function mraidSize() {
+  try {
+    const m = window.mraid, s = m && m.getState && m.getState() !== "loading" && m.getMaxSize && m.getMaxSize();
+    if (s && s.width > 50 && s.height > 50) return [Math.floor(s.width), Math.floor(s.height)];
+  } catch (e) {}
+  return null;
+}
+function frameSize() { const b = document.body; return [b.clientWidth, b.clientHeight]; }
+function viewSize() {
+  const [fw, fh] = frameSize(), m = mraidSize();
+  return m ? [Math.min(fw, m[0]) || m[0], Math.min(fh, m[1]) || m[1]] : [fw, fh];
+}
 function resize() {
   const app = $("app"), [vw, vh] = viewSize();
   lastView = vw + "x" + vh;
   if (!vw || !vh) return; // not laid out yet; the per-frame check retries
+  app.style.width = vw + "px"; app.style.height = vh + "px";
+  stamp();
   const land = vw > vh * 1.15;
   app.classList.toggle("land", land);
   DPR = Math.min(2, window.devicePixelRatio || 1);

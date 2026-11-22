@@ -66,6 +66,7 @@ const out = template
   .replace("/*@FONTS@*/", () => FONTS)
   .replace("/*@STORE@*/", () => `const STORE = ${JSON.stringify(STORE)};`)
   .replace("/*@SHARED@*/", () => SHARED)
+  .replace("@BUILD_ID@", () => new Date().toISOString().slice(5, 16).replace("T", " ") + " UTC")
   .replace("<!--@ICON_BREAD@-->", () => svgOf("pw-bread"))
   .replace("<!--@ICON_QUACK@-->", () => svgOf("pw-quack"))
   .replace("<!--@ICON_MUTE@-->", () => svgOf("muteBtn"));
