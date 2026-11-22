@@ -941,88 +941,93 @@ const walkers = () => G.ducks.filter(d => d.state === "walk");
 const cleared = () => !S.queue.length && !walkers().length;
 const SIDES = ["top", "left", "right", "bottom"];
 
+// Each beat has a time limit, so the whole ad reaches the end card in about 25 seconds even if nobody taps.
+// When a beat runs out, the leftover ducks run off; when a power-up prompt is ignored, the ad uses it for the viewer.
 const STEPS = {
   tap: {
     enter() {
-      tuneSpeed = 0.62;
-      banner("Protect the sandwich!", "The ducks want your lunch");
+      tuneSpeed = 0.9;
+      banner("Protect the sandwich!");
       hint("Tap the ducks to bonk them!");
-      queue([[0.5, "mallard", "top", 0.3], [2.4, "mallard", "right", 0.35], [3.8, "mallard", "left", 0.7]]);
+      queue([[0.15, "mallard", "top", 0.3], [0.75, "mallard", "right", 0.35], [1.35, "mallard", "left", 0.7]]);
     },
     update() {
       const n = G.bonked - S.bonked0;
       if (n >= 1 && n < 3) hint(`Nice bonk! ${3 - n} more`);
-      if (cleared()) return next("bread", 0.7);
+      if (cleared()) return next("bread", 0.3);
+      if (S.t > 4.5) { shoo(); next("bread", 0.2); }
     },
-    hand() { return nearestDuck(S.idle > 1.6 || G.bonked === S.bonked0); }
+    hand() { return nearestDuck(true); }
   },
   bread: {
     enter() {
-      tuneSpeed = 0.78; hint(""); INV.bread = 1; updateHud();
+      tuneSpeed = 0.95; hint(""); INV.bread = 1; updateHud();
       banner("Here comes a flock!");
-      queue([0, 0.18, 0.36, 0.5, 0.66, 0.8, 0.95].map((t, i) => [0.6 + t, "mallard", SIDES[i % 4], [0.2, 0.75, 0.3, 0.6, 0.85, 0.25, 0.5][i]]));
+      queue([0, 0.12, 0.24, 0.36, 0.48].map((t, i) => [0.15 + t, "mallard", SIDES[i % 4], [0.2, 0.75, 0.3, 0.6, 0.85][i]]));
       S.phase = "incoming";
     },
     update() {
-      if (S.phase === "incoming" && S.t > 2.1) {
-        if (G.mode === "bread") { S.phase = "aim"; S.freeze = true; hint("Now tap the grass to toss it"); }
-        else if (G.bread || G.toss) S.phase = "after";
-        else { S.phase = "button"; S.freeze = true; glow("bread"); hint("Too many! Tap BREAD to distract them"); }
+      if (S.phase === "incoming" && S.t > 1.2) {
+        if (G.mode === "bread") { phase("aim"); S.freeze = true; hint("Now tap the grass to toss it"); }
+        else if (G.bread || G.toss) phase("after");
+        else { phase("button"); S.freeze = true; glow("bread"); hint("Too many! Tap BREAD to distract them"); }
       }
-      if (S.phase === "aim" && !G.mode) { S.phase = "snack"; } // tossed
-      if (S.phase === "snack" || S.phase === "after") { S.freeze = false; glow(null); }
-      if (S.phase === "snack") { hint("They're snacking. Bonk 'em!"); S.phase = "after"; }
-      if (S.phase === "after" && cleared()) return next("ducklings", 0.7);
+      if (S.phase === "button" && S.t - S.phaseAt > 2) this.onPower("bread");
+      if (S.phase === "aim" && S.t - S.phaseAt > 1.8) { const p = this.hand(); throwBread(p.x, p.y); }
+      if (S.phase === "aim" && !G.mode) phase("snack"); // tossed
+      if (S.phase === "snack") { S.freeze = false; glow(null); hint("They're snacking. Bonk 'em!"); phase("after"); }
+      if (S.phase === "after" && (cleared() || S.t - S.phaseAt > 2.8)) { shoo(); next("ducklings", 0.3); }
     },
     onPower(k) {
       if (k !== "bread" || S.phase === "snack" || S.phase === "after") return false;
       if (S.phase === "aim") return true; // already aiming
-      S.phase = "aim"; glow(null); setMode("bread");
+      phase("aim"); glow(null); setMode("bread");
       hint("Now tap the grass to toss it");
       return true;
     },
     hand() {
       if (S.phase === "button") return btnPoint("pw-bread");
       if (S.phase === "aim") return { x: W * 0.78, y: FT + (FB - FT) * 0.2, dir: "up" };
-      if (S.phase === "after") return nearestDuck(S.idle > 2);
+      if (S.phase === "after") return nearestDuck(S.idle > 1);
       return null;
     }
   },
   ducklings: {
     enter() {
-      tuneSpeed = 0.72;
-      banner("Ducklings!", "Tiny, fast, and they come in threes");
-      hint("Bonk all the ducklings!");
-      queue([[0.7, "duckling", "left", 0.3], [2.1, "duckling", "right", 0.7], [3.3, "duckling", "top", 0.8]]);
+      tuneSpeed = 0.95;
+      banner("Ducklings!");
+      hint("Ducklings are fast. Bonk 'em!");
+      queue([[0.1, "duckling", "left", 0.3], [0.6, "duckling", "right", 0.7]]);
     },
-    update() { if (cleared()) return next("swarm", 0.6); },
-    hand() { return nearestDuck(S.idle > 1.8); }
+    update() {
+      if (cleared()) return next("swarm", 0.3);
+      if (S.t > 3.6) { shoo(); next("swarm", 0.2); }
+    },
+    hand() { return nearestDuck(S.idle > 0.8); }
   },
   swarm: {
     enter() {
-      tuneSpeed = 0.85; hint("");
-      banner("SWARM!", "Every duck in the park");
+      tuneSpeed = 1.05; hint("");
+      banner("SWARM!");
       INV.quack = 1; updateHud();
       const list = [];
-      for (let i = 0; i < 34; i++) {
-        const roll = Math.random(), type = i % 11 === 5 ? "duckling" : roll < 0.25 ? "rubber" : "mallard";
-        list.push([0.5 + i * 0.07, type, SIDES[i % 4], rand(0.05, 0.95)]);
+      for (let i = 0; i < 28; i++) {
+        const roll = Math.random(), type = i % 9 === 4 ? "duckling" : roll < 0.25 ? "rubber" : "mallard";
+        list.push([0.1 + i * 0.04, type, SIDES[i % 4], rand(0.05, 0.95)]);
       }
       queue(list);
       S.phase = "incoming";
     },
     update() {
-      const close = walkers().some(d => Math.hypot(d.x - PX, d.y - PY) < 125 * U);
-      if (S.phase === "incoming" && (S.t > 2.6 || (S.t > 1.4 && close))) {
-        S.phase = "button"; S.freeze = true; glow("quack"); hint("Way too many! SUPER QUACK!");
-      }
-      if (S.phase === "fled" && S.t - S.fledAt > 2) return next("goose", 0);
+      if (S.phase === "incoming" && S.t > 1.2) { phase("button"); S.freeze = true; glow("quack"); hint("Way too many! SUPER QUACK!"); }
+      if (S.phase === "button" && S.t - S.phaseAt > 2) this.onPower("quack");
+      if (S.phase === "fled" && S.t - S.phaseAt > 1) return next("goose", 0);
     },
     onPower(k) {
       if (k !== "quack" || S.phase === "fled") return false;
       S.queue = []; S.freeze = false; glow(null); hint("");
       superQuack();
-      S.phase = "fled"; S.fledAt = S.t;
+      phase("fled");
       return true;
     },
     hand() { return S.phase === "button" ? btnPoint("pw-quack") : null; }
@@ -1032,12 +1037,12 @@ const STEPS = {
       tuneSpeed = 0.55;
       banner("MAGIC GOOSE!", "Now you see him, now you don't");
       hint("Bonk the goose! He teleports");
-      queue([[0.9, "goose", "top", 0.5], [3, "mallard", "left", 0.4], [4.5, "mallard", "right", 0.6]]);
+      queue([[0.1, "goose", "top", 0.5]]);
       S.gooseIn = false; S.gooseBonked = false;
     },
     update() {
       const goose = G.ducks.find(d => d.type === "goose");
-      if (goose) S.gooseIn = true;
+      if (goose && !S.gooseIn) { S.gooseIn = true; goose.hp = goose.maxHp = GOOSE_HP; }
       if (goose && goose.state === "dizzy") S.gooseBonked = true;
       if (goose && goose.state === "walk") {
         const left = goose.hp;
@@ -1045,19 +1050,21 @@ const STEPS = {
       }
       if (S.gooseIn && !G.ducks.some(d => d.type === "goose" && d.state !== "dizzy")) {
         if (!S.gooseDown) { S.gooseDown = true; if (S.gooseBonked) { hint("Goose defeated!"); G.shake = 14; G.flash = 0.6; SFX.wave(); } }
-        if (cleared() || S.t - (S.downAt ??= S.t) > 1.6) return next("end", 0.9);
+        return next("end", 0.8);
+      }
+      if (S.t > 6 && goose && goose.state === "walk") { // out of time: he vanishes in a puff
+        puff(goose.x, goose.y - goose.r * 0.5, 16, "#9b7bff"); addText(goose.x, goose.y - goose.r * 1.6, "poof!", "#6b4bd6", 22);
+        goose.state = "gone"; shoo(); next("end", 0.5);
       }
     },
     hand() {
       const g = G.ducks.find(d => d.type === "goose" && d.state === "walk");
-      if (g && (S.idle > 1.4 || g.hp === g.maxHp)) return { x: g.x, y: g.y + g.r * 0.2, dir: "up" };
-      return null;
+      return g ? { x: g.x, y: g.y + g.r * 0.2, dir: "up" } : null;
     }
   },
   end: {
     enter() {
-      S.freeze = false; glow(null); hint(""); $("hand").hidden = true;
-      for (const d of G.ducks) if (d.state === "walk") { d.state = "flee"; d.t = 0; d.vx = (d.x < PX ? -1 : 1) * 400 * U; d.vy = -150 * U; }
+      S.freeze = false; glow(null); hint(""); $("hand").hidden = true; shoo();
       $("endTitle").textContent = G.hearts >= 3 ? "Sandwich saved! Not a crumb lost." : G.hearts === 2 ? "Sandwich saved!" : "Sandwich saved. Barely.";
       $("endSandwich").innerHTML = sandwichSVG(G.hearts);
       $("endScore").textContent = G.score;
@@ -1068,6 +1075,14 @@ const STEPS = {
     update() {}
   }
 };
+const GOOSE_HP = 4;   // the game's goose takes 6; the ad keeps it short
+const END_BY = 25;    // seconds: the end card shows by now no matter what
+
+function phase(p) { S.phase = p; S.phaseAt = S.t; }
+function shoo() { // leftover ducks waddle off fast so the next beat starts clean
+  S.queue = [];
+  for (const d of G.ducks) if (d.state === "walk") { d.state = "flee"; d.t = 0; d.vx = (d.x < PX ? -1 : 1) * 420 * U; d.vy = -160 * U; d.face = d.x < PX ? -1 : 1; }
+}
 
 function next(step, delay) { if (S.nextStep) return; S.nextStep = step; S.nextAt = S.total + delay; } // once per step
 function go(step) {
@@ -1135,7 +1150,7 @@ function newRun() {
 function update(rdt) {
   S.total += rdt; S.t += rdt; S.idle += rdt;
   if (S.nextStep && S.total >= S.nextAt) go(S.nextStep);
-  if (S.step !== "end" && S.total > 58) go("end"); // networks want the end card inside a minute
+  if (S.step !== "end" && S.total > END_BY) go("end");
   let dt = rdt * (S.freeze ? 0.1 : G.mode ? 0.35 : 1);
   G.t += dt;
   G.shake = Math.max(0, G.shake - rdt * 40);

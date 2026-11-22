@@ -1,20 +1,20 @@
 # Quaattack! playable ad
 
-A 30 to 60 second guided demo of the game, made to run inside other apps as a playable ad.
+A guided demo of under 30 seconds of the game, made to run inside other apps as a playable ad.
 
 **Upload this file:** `playable/dist/quaattack-playable.html`
 
 ## What the viewer plays
 
-1. **Tap the ducks.** Three mallards waddle in one at a time, with a pointing hand on the nearest one.
+1. **Tap the ducks.** Three mallards waddle in, with a pointing hand on the nearest one.
 2. **Throw bread.** A flock arrives, time slows down, and the Bread button glows. Tap it, tap the grass, then bonk the ducks while they snack.
-3. **Ducklings.** Three lines of fast ducklings.
-4. **Swarm.** More than 30 ducks rush in from every side. Time slows again and the Super Quack button glows. One tap sends every duck flying.
-5. **Magic Goose.** The wizard goose teleports on every bonk and takes six hits.
+3. **Ducklings.** Two lines of fast ducklings.
+4. **Swarm.** 28 ducks rush in from every side. Time slows again and the Super Quack button glows. One tap sends every duck flying.
+5. **Magic Goose.** The wizard goose teleports on every bonk and takes four hits (six in the game).
 6. **End card** with the score, birds bonked, and a big **Play Free** button.
 
 The demo can't be lost. A duck that reaches the blanket takes a bite, but at least one bite of sandwich always survives.
-If the viewer stops playing, the end card still shows up by 58 seconds.
+A viewer who keeps tapping reaches the end card in about 17 seconds. Each beat has a time limit: leftover ducks run off, and if a power-up prompt is ignored for 2 seconds, the ad uses it for them. So even with no taps at all, the end card shows up by 25 seconds (`END_BY` in `playable/playable.html`).
 A small **Install** button stays in the top corner the whole time.
 
 ## Ad network specs it meets
